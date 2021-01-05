@@ -1,0 +1,17 @@
+depsversion = "0.0.0"
+artifacttype = "console"
+
+name = "swamp/unpack-c"
+version = "0.0.0"
+
+[[dependencies]]
+name = 'swamp/runtime-c'
+version = "*"
+
+[[dependencies]]
+name = 'swamp/typeinfo-c'
+version = "*"
+
+[[dependencies]]
+name = 'piot/raff-c'
+version = "*"
