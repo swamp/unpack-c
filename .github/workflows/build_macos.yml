@@ -16,6 +16,12 @@ jobs:
       - name: Use cmake
         run: cmake --version
 
+      - name: install deps
+        run: go get github.com/piot/deps/src/deps
+
+      - name: deps fetch
+        run: $HOME/go/bin/deps fetch -m clone
+
       - name: build
         run: cmake .
         working-directory: src/
@@ -26,6 +32,6 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: Swamp Unpack MacOS
+          name: Swamp Unpack MacOS Library
           path: |
-            src/libswamp-unpack.a
+            src/libswamp_unpack.a

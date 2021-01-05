@@ -19,6 +19,12 @@ jobs:
       - name: Use cmake
         run: cmake --version
 
+      - name: install deps
+        run: go get github.com/piot/deps/src/deps
+
+      - name: deps fetch
+        run: $HOME/go/bin/deps fetch -m clone
+
       - name: build
         run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .
         working-directory: src/
@@ -29,6 +35,6 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: Swamp Unpack Linux Executable
+          name: Swamp Unpack Linux Library
           path: |
-            src/libswamp-unpack.a
+            src/libswamp_unpack.a
