@@ -157,6 +157,25 @@ static void read_strings(octet_stream* s, swamp_allocator* allocator, unpack_con
     }
 }
 
+static void read_resource_names(octet_stream* s, swamp_allocator* allocator, unpack_constants* repo, int verboseFlag)
+{
+    uint8_t count = read_count(s);
+    if (verboseFlag) {
+        SWAMP_LOG_INFO("=== read resource names %d ===", count);
+    }
+
+    for (uint8_t i = 0; i < count; ++i) {
+        char buf[512];
+        read_string(s, buf);
+        if (verboseFlag) {
+            SWAMP_LOG_DEBUG(" %d: read resource name '%s'", repo->index, buf);
+        }
+        repo->resource_names[i] = tc_str_dup(buf);
+        repo->resource_name_index = i + 1;
+        repo->table[repo->index++] = swamp_allocator_alloc_integer(allocator, i);
+    }
+}
+
 static char* duplicate_string(const char* source)
 {
     int source_size;
@@ -404,7 +423,7 @@ int readTypeInformation(swamp_unpack* self, octet_stream* s)
 
     int errorCode = swtiDeserialize(&s->octets[s->position], upcomingOctetsInChunk, &self->typeInfoChunk);
     if (errorCode < 0) {
-        CLOG_SOFT_ERROR("error %d", errorCode);
+        CLOG_SOFT_ERROR("swtiDeserialize: error %d", errorCode);
         return errorCode;
     }
 
@@ -455,6 +474,13 @@ int readCode(swamp_unpack* self, octet_stream* s, int verboseFlag)
     }
     read_strings(s, self->allocator, self->table, self->verbose_flag);
 
+    RaffTag resourceNameMarker = {0xF0, 0x9F, 0x8C, 0xB3};
+    if ((errorCode = verifyMarker(s, resourceNameMarker, verboseFlag)) != 0) {
+        return errorCode;
+    }
+    read_resource_names(s, self->allocator, self->table, self->verbose_flag);
+
+
     RaffTag functionMarker = {0xF0, 0x9F, 0x90, 0x8A};
     if ((errorCode = verifyMarker(s, functionMarker, verboseFlag)) != 0) {
         return errorCode;
@@ -476,7 +502,7 @@ int swamp_unpack_octet_stream(swamp_unpack* self, octet_stream* s, int verboseFl
         return errorCode;
     }
 
-    RaffTag expectedPacketName = {'s', 'p', 'k', '2'};
+    RaffTag expectedPacketName = {'s', 'p', 'k', '3'};
     RaffTag expectedPacketIcon = {0xF0, 0x9F, 0x93, 0xA6};
 
     int upcomingOctetsInChunk = readAndVerifyRaffChunkHeader(s, expectedPacketIcon, expectedPacketName);

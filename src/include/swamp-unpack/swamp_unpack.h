@@ -37,6 +37,8 @@ typedef struct swamp_unpack {
 typedef struct unpack_constants {
     const struct swamp_value* table[512];
     int index;
+    const char* resource_names[512];
+    int resource_name_index;
 } unpack_constants;
 
 void unpack_constants_init(unpack_constants* self);
