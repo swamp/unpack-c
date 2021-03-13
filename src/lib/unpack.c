@@ -227,7 +227,7 @@ static void read_functions(swamp_unpack* self, octet_stream* s, swamp_allocator*
         const swamp_value* constants[512];
 
         for (uint8_t j = 0; j < constant_count; ++j) {
-            uint8_t index = read_uint8(s);
+            uint16_t index = read_uint16(s);
             constants[j] = repo->table[index];
             if (self->verbose_flag) {
                 SWAMP_LOG_DEBUG(" -- %d: constant: type: %d", index, constants[j]->internal.type);
@@ -502,7 +502,7 @@ int swamp_unpack_octet_stream(swamp_unpack* self, octet_stream* s, int verboseFl
         return errorCode;
     }
 
-    RaffTag expectedPacketName = {'s', 'p', 'k', '3'};
+    RaffTag expectedPacketName = {'s', 'p', 'k', '4'};
     RaffTag expectedPacketIcon = {0xF0, 0x9F, 0x93, 0xA6};
 
     int upcomingOctetsInChunk = readAndVerifyRaffChunkHeader(s, expectedPacketIcon, expectedPacketName);
