@@ -9,7 +9,6 @@
 #include <swamp-runtime/types.h>
 #include <swamp-typeinfo/deserialize.h>
 #include <swamp-typeinfo/typeinfo.h>
-#include <swamp-unpack/swamp_unpack.h>
 
 #include <clog/clog.h>
 #include <flood/out_stream.h>
@@ -17,6 +16,7 @@
 #include <raff/tag.h>
 
 #include <string.h> // strcmp
+#include <swamp-unpack/swamp_unpack.h>
 
 void unpack_constants_init(unpack_constants* self)
 {
@@ -316,7 +316,7 @@ static void read_function_declarations(swamp_unpack* self, octet_stream* s, swam
             if (foundType == 0) {
                 fldOutStreamWritef(&outStream, "unknown");
             } else {
-                swtiDebugOutput(&outStream, foundType);
+                swtiDebugOutput(&outStream, 0, foundType);
             }
             fldOutStreamWriteUInt8(&outStream, 0);
             const char* typeString = (const char*) outStream.octets;
