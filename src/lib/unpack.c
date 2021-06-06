@@ -218,7 +218,7 @@ static void read_functions(swamp_unpack* self, octet_stream* s, swamp_allocator*
         swamp_func* previously_allocated_function = (swamp_func*) repo->table[declarationRef];
 
         if (self->verbose_flag) {
-            SWAMP_LOG_DEBUG("%d: name: '%s' functionRef:%d param_count:%d "
+            SWAMP_LOG_DEBUG("%d: name: '%s' constantIndexInFile:%d param_count:%d "
                             "var_count:%d temp_count:%d constant_count:%d",
                             i, previously_allocated_function->debug_name, declarationRef, param_count, variable_count,
                             temp_count, constant_count);
@@ -232,6 +232,12 @@ static void read_functions(swamp_unpack* self, octet_stream* s, swamp_allocator*
             if (self->verbose_flag) {
                 SWAMP_LOG_DEBUG(" -- %d: constant: type: %d", index, constants[j]->internal.type);
                 swamp_value_print(constants[j], "_constant");
+                if (swamp_value_is_func(constants[j])) {
+                    swamp_func* func = swamp_value_func(constants[j]);
+                    if (func->typeIndex == 0) {
+                        CLOG_ERROR("typeIndex should rarely be zero for functions");
+                    }
+                }
             }
         }
 
@@ -249,9 +255,9 @@ static void read_functions(swamp_unpack* self, octet_stream* s, swamp_allocator*
     }
 }
 
-static void read_type_ref(octet_stream* s, uint8_t* typeRef)
+static void read_type_ref(octet_stream* s, uint16_t* typeRef)
 {
-    *typeRef = read_uint8(s);
+    *typeRef = read_uint16(s);
 }
 
 static void read_external_functions(swamp_unpack* self, octet_stream* s, swamp_allocator* allocator,
@@ -268,7 +274,7 @@ static void read_external_functions(swamp_unpack* self, octet_stream* s, swamp_a
         char name[512];
         read_string(s, name);
 
-        uint8_t typeRef;
+        uint16_t typeRef;
         read_type_ref(s, &typeRef);
 
         if (self->verbose_flag) {
@@ -303,8 +309,11 @@ static void read_function_declarations(swamp_unpack* self, octet_stream* s, swam
         char name[512];
         read_string(s, name);
 
-        uint8_t typeRef;
+        uint16_t typeRef;
         read_type_ref(s, &typeRef);
+        if (typeRef == 0) {
+            CLOG_ERROR("typeRef is rarely 0 for function declarations");
+        }
 
         if (self->verbose_flag) {
             const struct SwtiType* foundType = swtiChunkTypeFromIndex(&self->typeInfoChunk, typeRef);
@@ -314,13 +323,14 @@ static void read_function_declarations(swamp_unpack* self, octet_stream* s, swam
             fldOutStreamInit(&outStream, temp, 1024);
 
             if (foundType == 0) {
-                fldOutStreamWritef(&outStream, "unknown");
+                CLOG_SOFT_ERROR("could not find any type for index: %d '%s'", typeRef, name);
+                fldOutStreamWritef(&outStream, "error:");
             } else {
                 swtiDebugOutput(&outStream, 0, foundType);
             }
             fldOutStreamWriteUInt8(&outStream, 0);
             const char* typeString = (const char*) outStream.octets;
-            SWAMP_LOG_DEBUG("%d (%d): '%s' type: '%s' (%d) param_count:%d", repo->index, i, name, typeString, typeRef,
+            SWAMP_LOG_DEBUG("constantIndex: %d localIndex:(%d): '%s' typeIndex:%d '%s' param_count:%d", repo->index, i, name, typeRef, typeString,
                             param_count);
         }
 
@@ -328,6 +338,9 @@ static void read_function_declarations(swamp_unpack* self, octet_stream* s, swam
         function_declaration->internal.type = swamp_type_function;
 
         function_declaration->debug_name = duplicate_string(name);
+        if (typeRef == 0) {
+            CLOG_ERROR("this is very unlikely to be correct %d", typeRef);
+        }
         function_declaration->typeIndex = typeRef;
 
         if (strcmp(name, "main") == 0) {
@@ -411,7 +424,7 @@ int verifyMarker(octet_stream* s, RaffTag expectedMarker, int verboseFlag)
     return 0;
 }
 
-int readTypeInformation(swamp_unpack* self, octet_stream* s)
+int readTypeInformation(swamp_unpack* self, octet_stream* s, int verboseFlag)
 {
     RaffTag expectedPacketName = {'s', 't', 'i', '0'};
     RaffTag expectedPacketIcon = {0xF0, 0x9F, 0x93, 0x9C};
@@ -425,6 +438,10 @@ int readTypeInformation(swamp_unpack* self, octet_stream* s)
     if (errorCode < 0) {
         CLOG_SOFT_ERROR("swtiDeserialize: error %d", errorCode);
         return errorCode;
+    }
+
+    if (verboseFlag) {
+        swtiChunkDebugOutput(&self->typeInfoChunk, 0, "readTypeInformation");
     }
 
     s->position += upcomingOctetsInChunk;
@@ -510,7 +527,7 @@ int swamp_unpack_octet_stream(swamp_unpack* self, octet_stream* s, int verboseFl
         return upcomingOctetsInChunk;
     }
 
-    if ((errorCode = readTypeInformation(self, s)) < 0) {
+    if ((errorCode = readTypeInformation(self, s, verboseFlag)) < 0) {
         SWAMP_LOG_SOFT_ERROR("problem with type information chunk");
         return errorCode;
     }
